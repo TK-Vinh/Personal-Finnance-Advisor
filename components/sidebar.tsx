@@ -1,10 +1,15 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 
-import { Star, TrendingUp, Bell, Search, X, Loader2 } from "lucide-react"
+import { Star, TrendingUp, Bell, Search, X, Loader2, LogIn, LogOut, User } from "lucide-react"
 import { MarketData } from "@/lib/fireant"
 import { proxyGetSymbolQuote } from "@/app/actions"
+import { useSession, signOut } from "next-auth/react"
+import { getWatchlist, addToWatchlist, removeFromWatchlist } from "@/app/actions/user"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Button } from "@/components/ui/button"
 
 interface SidebarProps {
   selectedSymbol: string
@@ -12,11 +17,30 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ selectedSymbol, onSymbolChange }: SidebarProps) {
+  const router = useRouter()
+  const { data: session, status } = useSession()
   const [pinnedSymbols, setPinnedSymbols] = useState<MarketData[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("")
   const [searchResults, setSearchResults] = useState<any[]>([])
   const [isSearching, setIsSearching] = useState(false)
+
+  // Load watchlist on mount if logged in
+  useEffect(() => {
+    const loadWatchlist = async () => {
+      if (session?.user?.id) {
+        const symbols = await getWatchlist()
+        const quotes = await Promise.all(
+          symbols.map(async (s) => {
+            const quote = await proxyGetSymbolQuote(s)
+            return quote || { symbol: s, price: 0, change: 0, percentChange: 0, trend: "flat" } as MarketData
+          })
+        )
+        setPinnedSymbols(quotes)
+      }
+    }
+    loadWatchlist()
+  }, [session])
 
   // Update debounced search query after 500ms
   useEffect(() => {
@@ -60,19 +84,22 @@ export default function Sidebar({ selectedSymbol, onSymbolChange }: SidebarProps
     const isPinned = pinnedSymbols.some((s: MarketData) => s.symbol === symbolData.symbol)
     if (isPinned) {
       setPinnedSymbols((prev: MarketData[]) => prev.filter((s: MarketData) => s.symbol !== symbolData.symbol))
+      if (session?.user?.id) {
+        await removeFromWatchlist(symbolData.symbol)
+      }
     } else {
       const quote = await proxyGetSymbolQuote(symbolData.symbol)
-      if (quote) {
-        setPinnedSymbols((prev: MarketData[]) => [...prev, quote])
-      } else {
-        // Fallback if quote fails
-        setPinnedSymbols((prev: MarketData[]) => [...prev, {
-          symbol: symbolData.symbol,
-          price: 0,
-          change: 0,
-          percentChange: 0,
-          trend: "flat"
-        }])
+      const newQuote = quote || {
+        symbol: symbolData.symbol,
+        price: 0,
+        change: 0,
+        percentChange: 0,
+        trend: "flat"
+      } as MarketData
+
+      setPinnedSymbols((prev: MarketData[]) => [...prev, newQuote])
+      if (session?.user?.id) {
+        await addToWatchlist(symbolData.symbol)
       }
     }
     setSearchQuery("")
@@ -175,6 +202,47 @@ export default function Sidebar({ selectedSymbol, onSymbolChange }: SidebarProps
       </div>
 
       <div className="mt-auto space-y-3 pt-4 border-t border-border/10">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2">Account</h3>
+        {status === "loading" ? (
+          <div className="px-2 mb-4">
+            <div className="flex items-center gap-3 animate-pulse">
+              <div className="h-9 w-9 rounded-full bg-primary/10" />
+              <div className="flex-1 space-y-2">
+                <div className="h-3 bg-primary/10 rounded w-20" />
+                <div className="h-2 bg-primary/10 rounded w-32" />
+              </div>
+            </div>
+          </div>
+        ) : session ? (
+          <div className="flex items-center gap-3 px-2 mb-4">
+            <Avatar className="h-9 w-9 border border-primary/20">
+              <AvatarImage src={session.user?.image || ""} />
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {session.user?.name?.[0] || <User className="h-4 w-4" />}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{session.user?.name || "User"}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{session.user?.email}</p>
+            </div>
+            <button
+              onClick={() => signOut()}
+              className="p-2 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+              title="Logout"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => router.push("/login")}
+            className="w-full p-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+          >
+            <LogIn className="w-4 h-4" />
+            Sign In to Sync
+          </button>
+        )}
+
         <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-2">Quick Actions</h3>
         <button className="w-full p-2.5 rounded-lg glass-strong border border-border/10 text-sm font-medium text-foreground hover:bg-primary/5 transition-colors flex items-center justify-center gap-2">
           <Bell className="w-4 h-4" />
@@ -182,7 +250,7 @@ export default function Sidebar({ selectedSymbol, onSymbolChange }: SidebarProps
         </button>
         <button className="w-full p-2.5 rounded-lg glass-strong border border-border/10 text-sm font-medium text-foreground hover:bg-primary/5 transition-colors flex items-center justify-center gap-2">
           <TrendingUp className="w-4 h-4" />
-          Watchlist
+          Market Trends
         </button>
       </div>
     </aside >

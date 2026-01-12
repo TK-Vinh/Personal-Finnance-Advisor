@@ -15,8 +15,11 @@ export default function PredictionGauge({ symbol, currentPrice, data }: Predicti
   const price = currentPrice || 0
   const consensus = data?.consensusPrice || 0
 
+  // Check if we have valid valuation data
+  const hasValidData = consensus > 0 && price > 0
+
   let bullishProbability = 50
-  if (price > 0 && consensus > 0) {
+  if (hasValidData) {
     const upside = (consensus - price) / price
     // Map -20% to +20% upside to 0-100% probability
     bullishProbability = Math.min(Math.max(upside * 250 + 50, 10), 90)
@@ -24,17 +27,42 @@ export default function PredictionGauge({ symbol, currentPrice, data }: Predicti
 
   const bearishProbability = 100 - bullishProbability
 
+  // No valuation data available
+  if (!hasValidData) {
+    return (
+      <div className="glass-strong rounded-xl border border-border/20 p-4 h-full flex flex-col justify-between">
+        <div>
+          <h3 className="font-semibold text-foreground text-sm mb-4">Đánh giá Định giá</h3>
+        </div>
+
+        <div className="flex-1 flex flex-col items-center justify-center gap-2 py-4">
+          <span className="text-3xl">📊</span>
+          <p className="text-sm text-muted-foreground text-center">
+            Chưa có dữ liệu định giá cho <span className="font-semibold text-foreground">{symbol}</span>
+          </p>
+          <p className="text-xs text-muted-foreground text-center">
+            FireAnt chưa cung cấp phân tích định giá DCF, P/E, P/B cho mã này
+          </p>
+        </div>
+
+        <div className="pt-4 border-t border-border/20 mt-4">
+          <p className="text-xs text-muted-foreground italic">Nguồn: FireAnt API</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="glass-strong rounded-xl border border-border/20 p-4 h-full flex flex-col justify-between">
       <div>
-        <h3 className="font-semibold text-foreground text-sm mb-4">Valuation Gauge</h3>
+        <h3 className="font-semibold text-foreground text-sm mb-4">Đánh giá Định giá</h3>
       </div>
 
       <div className="flex-1 flex flex-col justify-center gap-6">
         {/* Upside Indicator */}
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-xs font-medium text-success">Bullish (Target ${consensus.toLocaleString("vi-VN")})</span>
+            <span className="text-xs font-medium text-success">Tăng giá (Mục tiêu {consensus.toLocaleString("vi-VN")} đ)</span>
             <span className="text-sm font-bold text-success">{Math.round(bullishProbability)}%</span>
           </div>
           <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
@@ -48,7 +76,7 @@ export default function PredictionGauge({ symbol, currentPrice, data }: Predicti
         {/* Downside/Current */}
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <span className="text-xs font-medium text-destructive">Bearish</span>
+            <span className="text-xs font-medium text-destructive">Giảm giá</span>
             <span className="text-sm font-bold text-destructive">{Math.round(bearishProbability)}%</span>
           </div>
           <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
@@ -61,8 +89,9 @@ export default function PredictionGauge({ symbol, currentPrice, data }: Predicti
       </div>
 
       <div className="pt-4 border-t border-border/20 mt-4">
-        <p className="text-xs text-muted-foreground">Based on DCF, P/E, and P/B Valuation Methods</p>
+        <p className="text-xs text-muted-foreground">Dựa trên phương pháp DCF, P/E và P/B</p>
       </div>
     </div>
   )
 }
+

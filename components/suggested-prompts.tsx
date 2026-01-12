@@ -3,9 +3,9 @@
 import { Zap, TrendingUp, BarChart3 } from "lucide-react"
 
 const PROMPTS = [
-  { icon: TrendingUp, text: "Analyze HPG Stock", color: "primary" },
-  { icon: BarChart3, text: "Predict VNINDEX tomorrow", color: "primary" },
-  { icon: Zap, text: "Compare Bank Sector", color: "primary" },
+  { icon: TrendingUp, text: "Phân tích cổ phiếu HPG", color: "primary" },
+  { icon: BarChart3, text: "Dự báo VNINDEX ngày mai", color: "primary" },
+  { icon: Zap, text: "So sánh ngành Ngân hàng", color: "primary" },
 ]
 
 interface SuggestedPromptsProps {
@@ -16,8 +16,8 @@ export default function SuggestedPrompts({ onSelectPrompt }: SuggestedPromptsPro
   return (
     <div className="flex flex-col items-center justify-center h-full gap-8">
       <div className="text-center space-y-2">
-        <h2 className="text-2xl font-bold text-foreground">Welcome to FireAnt AI</h2>
-        <p className="text-muted-foreground">Get instant market analysis and predictions</p>
+        <h2 className="text-2xl font-bold text-foreground">Chào mừng đến FireAnt AI</h2>
+        <p className="text-muted-foreground">Nhận phân tích và dự báo thị trường tức thì</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3 w-full max-w-sm">

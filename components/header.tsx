@@ -12,13 +12,13 @@ export default function Header() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-foreground">FireAnt</h1>
-            <p className="text-xs text-muted-foreground">AI Trading Assistant</p>
+            <p className="text-xs text-muted-foreground">Trợ lý Giao dịch AI</p>
           </div>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="px-3 py-1 rounded-full bg-success/10 border border-success/30 text-xs text-success font-medium">
-            🟢 Live Market
+            🟢 Thị trường đang mở
           </div>
           <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/40 to-primary/20 border border-primary/30 flex items-center justify-center text-sm font-bold text-primary">
             AI

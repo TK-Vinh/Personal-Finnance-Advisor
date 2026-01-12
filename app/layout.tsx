@@ -13,6 +13,8 @@ export const metadata: Metadata = {
   generator: "v0.app",
 }
 
+import { Providers } from "@/components/providers"
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -21,8 +23,10 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`font-sans antialiased dark`}>
-        {children}
-        <Analytics />
+        <Providers>
+          {children}
+          <Analytics />
+        </Providers>
       </body>
     </html>
   )

@@ -26,8 +26,8 @@ export default function OrderBook({ symbol, data }: OrderBookProps) {
   return (
     <div className="glass-strong rounded-xl border border-border/20 p-4 h-full flex flex-col overflow-hidden">
       <div className="mb-4">
-        <h3 className="font-semibold text-foreground text-sm">Live Order Book</h3>
-        <p className="text-xs text-muted-foreground">{symbol} Bid/Ask Levels</p>
+        <h3 className="font-semibold text-foreground text-sm">Sổ lệnh Trực tiếp</h3>
+        <p className="text-xs text-muted-foreground">{symbol} Mua/Bán</p>
       </div>
 
       <div className="flex-1 overflow-y-auto space-y-1">

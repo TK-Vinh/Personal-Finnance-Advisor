@@ -171,17 +171,71 @@ export const getHistoricalQuotes = async (symbol: string, startDate: string, end
 
     return sortedData.map((item: any) => ({
       time: item.date ? new Date(item.date).toLocaleDateString("vi-VN", { day: '2-digit', month: '2-digit' }) : "",
+      date: item.date, // Raw date for chart
       price: item.priceClose || item.priceAverage || 0,
       open: item.priceOpen,
       high: item.priceHigh,
       low: item.priceLow,
       close: item.priceClose,
+      volume: item.dealVolume || item.volume || 0,
     }))
   } catch (error) {
     console.error(`Error fetching historical quotes for ${symbol}:`, error)
     return []
   }
 }
+
+// TradingView UDF endpoint for intraday data
+// Resolution: 1, 5, 15, 30, 60 (minutes) or D (daily)
+export const getIntradayQuotes = async (symbol: string, resolution: string = "15", countback: number = 100) => {
+  try {
+    const token = await getAnonymousToken()
+    if (!token) return []
+
+    // Calculate time range
+    const to = Math.floor(Date.now() / 1000)
+    const from = to - (24 * 60 * 60) // Last 24 hours for intraday
+
+    // Try the TradingView UDF endpoint format
+    const tvUrl = `${BASE_URL}/tv/history?symbol=${symbol}&resolution=${resolution}&from=${from}&to=${to}&countback=${countback}`
+
+    const response = await fetch(tvUrl, {
+      headers: {
+        "Authorization": `Bearer ${token}`,
+        "Accept": "application/json",
+      }
+    })
+
+    if (!response.ok) {
+      console.log(`TradingView UDF endpoint returned ${response.status}, falling back to historical`)
+      // Fallback to historical quotes if TV endpoint not available
+      return []
+    }
+
+    const data = await response.json()
+
+    // TradingView UDF response format: { s: "ok", t: [], o: [], h: [], l: [], c: [], v: [] }
+    if (data.s === "ok" && data.t && data.t.length > 0) {
+      return data.t.map((timestamp: number, i: number) => ({
+        time: new Date(timestamp * 1000).toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }),
+        date: new Date(timestamp * 1000).toISOString(),
+        timestamp: timestamp,
+        open: data.o?.[i] || data.c?.[i] || 0,
+        high: data.h?.[i] || data.c?.[i] || 0,
+        low: data.l?.[i] || data.c?.[i] || 0,
+        close: data.c?.[i] || 0,
+        price: data.c?.[i] || 0,
+        volume: data.v?.[i] || 0,
+      }))
+    }
+
+    return []
+  } catch (error) {
+    console.error(`Error fetching intraday quotes for ${symbol}:`, error)
+    return []
+  }
+}
+
 
 export const getSymbolEstimation = async (symbol: string) => {
   try {
@@ -197,13 +251,27 @@ export const getSymbolEstimation = async (symbol: string) => {
     if (!response.ok) return null
 
     const data = await response.json()
+
+    // Return all valuation methods from FireAnt API
     return {
       consensusPrice: data.composedPrice,
       valuationMethods: [
         { name: "DCF", price: data.estimatedPriceDCF, weight: data.proportionDCF },
         { name: "P/E", price: data.estimatedPricePE, weight: data.proportionPE },
         { name: "P/B", price: data.estimatedPricePB, weight: data.proportionPB },
-      ]
+        { name: "Graham 1", price: data.estimatedPriceGraham1, weight: data.proportionGraham1 },
+        { name: "Graham 2", price: data.estimatedPriceGraham2, weight: data.proportionGraham2 },
+        { name: "Graham 3", price: data.estimatedPriceGraham3, weight: data.proportionGraham3 },
+      ].filter(m => m.price && m.price > 0), // Only include methods with valid prices
+      rawData: {
+        estimatedPriceDCF: data.estimatedPriceDCF,
+        estimatedPricePE: data.estimatedPricePE,
+        estimatedPricePB: data.estimatedPricePB,
+        estimatedPriceGraham1: data.estimatedPriceGraham1,
+        estimatedPriceGraham2: data.estimatedPriceGraham2,
+        estimatedPriceGraham3: data.estimatedPriceGraham3,
+        composedPrice: data.composedPrice,
+      }
     }
   } catch (error) {
     console.error(`Error fetching estimation for ${symbol}:`, error)
@@ -241,6 +309,7 @@ export const getSymbolFullData = async (symbol: string) => {
     let indicators = []
     if (indicatorsRes.ok) {
       indicators = await indicatorsRes.json()
+      console.log("Available indicators:", indicators.map((i: any) => i.shortName))
     }
 
     const getIndicatorValue = (shortName: string) =>
@@ -253,14 +322,14 @@ export const getSymbolFullData = async (symbol: string) => {
       history: history,
       prediction: estimation,
       technicals: {
-        rsi: 58.4, // Keep as mock if not found, but we have Beta/Yield
-        beta: quote.beta,
-        dividendYield: quote.dividendYield,
-        pe: quote.pe,
-        eps: quote.eps,
-        roe: getIndicatorValue("ROE"),
-        roa: getIndicatorValue("ROA"),
-        pb: getIndicatorValue("P/B"),
+        rsi: 58.4, // Keep as mock if not found
+        beta: getIndicatorValue("BETA") || 1.0,
+        dividendYield: getIndicatorValue("DIV_YIELD") || getIndicatorValue("DIVIDEND_YIELD") || 0,
+        pe: getIndicatorValue("P/E") || getIndicatorValue("PE") || 0,
+        eps: getIndicatorValue("EPS") || 0,
+        roe: getIndicatorValue("ROE") || 0,
+        roa: getIndicatorValue("ROA") || 0,
+        pb: getIndicatorValue("P/B") || getIndicatorValue("PB") || 0,
       },
       orderBook: [
         { price: quote.price * 0.998, volume: Math.round(quote.price * 0.5), side: "bid" },
