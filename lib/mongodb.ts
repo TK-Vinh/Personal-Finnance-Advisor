@@ -4,15 +4,15 @@ declare global {
     var mongooseConnection: Promise<typeof mongoose> | undefined
 }
 
-const MONGODB_URI = process.env.MONGODB_URI!
-
-if (!MONGODB_URI) {
-    throw new Error("Please define the MONGODB_URI environment variable")
-}
+const MONGODB_URI = process.env.MONGODB_URI
 
 let cached = global.mongooseConnection
 
 async function dbConnect(): Promise<typeof mongoose> {
+    if (!MONGODB_URI) {
+        throw new Error("Please define the MONGODB_URI environment variable")
+    }
+
     if (cached) {
         return cached
     }

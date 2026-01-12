@@ -9,25 +9,29 @@ import dbConnect from "@/lib/mongodb"
 import User from "@/lib/models/User"
 
 // MongoDB client for NextAuth adapter
-const MONGODB_URI = process.env.MONGODB_URI!
-
-if (!MONGODB_URI) {
-    throw new Error("Please define the MONGODB_URI environment variable")
-}
+const MONGODB_URI = process.env.MONGODB_URI
 
 declare global {
     var _mongoClient: MongoClient | undefined
 }
 
-const client = global._mongoClient || new MongoClient(MONGODB_URI)
-if (process.env.NODE_ENV !== "production") {
-    global._mongoClient = client
+// Create client promise only if MONGODB_URI exists
+const getClientPromise = () => {
+    if (!MONGODB_URI) {
+        throw new Error("Please define the MONGODB_URI environment variable")
+    }
+    const client = global._mongoClient || new MongoClient(MONGODB_URI)
+    if (process.env.NODE_ENV !== "production") {
+        global._mongoClient = client
+    }
+    return client.connect()
 }
 
-const clientPromise = client.connect()
+// Only create the promise at runtime, not build time
+const clientPromise = MONGODB_URI ? getClientPromise() : (Promise.resolve(null) as any)
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
-    adapter: MongoDBAdapter(clientPromise),
+    adapter: MONGODB_URI ? MongoDBAdapter(clientPromise) : undefined,
     providers: [
         Google({}),
         GitHub({}),
@@ -79,3 +83,4 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         },
     },
 })
+
