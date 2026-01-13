@@ -200,6 +200,10 @@ ${context}`
         console.error("Error calling Gemini API:", error)
         console.error("Error details:", error?.message, error?.response?.data)
         console.error("API Key exists:", !!process.env.GEMINI_API_KEY)
-        return "Xin lỗi, tôi gặp lỗi khi xử lý yêu cầu. Vui lòng thử lại sau."
+        console.error("API Key length:", process.env.GEMINI_API_KEY?.length)
+
+        // Return more detailed error for debugging
+        const errorMessage = error?.message || "Unknown error"
+        return `Xin lỗi, tôi gặp lỗi khi xử lý yêu cầu. Chi tiết: ${errorMessage}. API Key tồn tại: ${!!process.env.GEMINI_API_KEY}`
     }
 }
